@@ -67,7 +67,7 @@ wss.on("connection", (ws) => {
         if (!rooms[room]) {
           rooms[room] = []; // Create room if it doesn't exist
         }
-        rooms[room].push(ws); // Add client to the room
+        rooms[room].push({ wsClient: ws, userId: clientId }); // Add client to the room
         ws.room = room; // Track which room the client belongs to
         var randomNumber = Math.floor(Math.random() * 10) + 1;
 
@@ -90,38 +90,44 @@ wss.on("connection", (ws) => {
 
         if (rooms[room]) {
           rooms[room].forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
+            if (
+              client.wsClient !== ws &&
+              client.wsClient.readyState === WebSocket.OPEN
+            ) {
               if (data.msgType === "offer") {
                 console.log("got an offer on server", data.msg);
-                client.send(
+                client.wsClient.send(
                   JSON.stringify({
                     msgType: "offer",
                     msg: data.msg,
-                    room: room,
+                    roomId: room,
+                    userId: client.userId,
                   })
                 );
               }
 
               if (data.msgType === "candidate") {
                 console.log("got a candidate on server");
-                client.send(
+                client.wsClient.send(
                   JSON.stringify({
                     msgType: "candidate",
-                    room: room,
+                    roomId: room,
                     candidate: data.candidate,
                     sdpmid: data.sdpmid,
                     sdpmlineindex: data.sdpmlineindex,
+                    userId: client.userId,
                   })
                 );
               }
 
               if (data.msgType == "answer") {
                 console.log("got an answer on server", data.msg);
-                client.send(
+                client.wsClient.send(
                   JSON.stringify({
                     msgType: "answer",
                     msg: data.msg,
-                    room: room,
+                    roomId: room,
+                    userId: client.userId,
                   })
                 );
               }
@@ -138,7 +144,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     const room = ws.room;
     if (room && rooms[room]) {
-      rooms[room] = rooms[room].filter((client) => client !== ws);
+      delete rooms.room;
       console.log(`Client disconnected from room: ${room}`);
     }
   });
